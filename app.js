@@ -327,7 +327,7 @@ function initUploadUI(){
   imageIds = [];
   slotCount = 0;
 
-  makeSlot('รูปภาพ #1 (จำเป็นอย่างน้อย 1)');
+  makeSlot('รูปภาพ #1');
   makeSlot('รูปภาพ #2');
 
   btnAddImage.onclick = () => {
@@ -621,4 +621,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load dropdowns
   loadDropdowns();
 });
+
 
