@@ -528,21 +528,40 @@ async function submitForm(){
     setStatus('ok', `บันทึกสำเร็จ\nเวลา: ${res.timestamp || '-'}`);
 
     await Swal.fire({
-      icon: 'success',
-      title: 'บันทึกสำเร็จ',
-      confirmButtonText: 'ตกลง',
-      confirmButtonColor: '#2563eb',
-      html: `
-        <div style="text-align:left;font-weight:800">
-          <div><b>วันที่เวลา:</b> ${res.timestamp || '-'}</div>
-          <div><b>หัวข้อหลัก:</b> ${payload.caseTitle || '-'}</div>
-          <div><b>ชื่อผู้ขอตรวจ:</b> ${payload.requesterName || '-'}</div>
-          <div><b>แผนก:</b> ${payload.department || '-'}</div>
-          <div><b>ผู้อนุมัติ:</b> ${payload.approver || '-'}</div>
-          <div style="margin-top:8px"><b>จำนวนรูป:</b> ${imageIds.length}</div>
-        </div>
-      `
-    });
+  title: 'บันทึกสำเร็จ',
+  confirmButtonText: 'ตกลง',
+  confirmButtonColor: '#2563eb',
+  width: 640,
+  icon: undefined, // ✅ ไม่มี icon
+  customClass: {
+    popup: 'swal-noicon-popup'
+  },
+  html: `
+    <div class="swal-kv">
+      <div class="swal-k">วันที่เวลา</div>
+      <div class="swal-v">${res.timestamp || '-'}</div>
+
+      <div class="swal-k">หัวข้อหลัก</div>
+      <div class="swal-v">${payload.caseTitle || '-'}</div>
+
+      <div class="swal-k">ชื่อผู้ขอตรวจ</div>
+      <div class="swal-v">${payload.requesterName || '-'}</div>
+
+      <div class="swal-k">แผนก</div>
+      <div class="swal-v">${payload.department || '-'}</div>
+
+      <div class="swal-k">ผู้อนุมัติ</div>
+      <div class="swal-v">${payload.approver || '-'}</div>
+
+      <div class="swal-k">จำนวนรูป</div>
+      <div class="swal-v">${imageIds.length}</div>
+    </div>
+
+    <div class="swal-note">
+      ระบบได้บันทึกข้อมูลเรียบร้อยแล้ว
+    </div>
+  `
+});
 
     clearAfterSave();
   }catch(err){
@@ -621,5 +640,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load dropdowns
   loadDropdowns();
 });
+
 
 
