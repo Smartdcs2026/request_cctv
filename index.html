@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <link rel="stylesheet" href="assets/style.css" />
@@ -17,16 +16,14 @@
 
 <body>
   <div class="wrap">
-
     <div class="topbar">
       <div class="brand">
-        <img class="logo" src="https://lh5.googleusercontent.com/d/1758AOZ5E3JbnzwrFA4f2kH8nZUPrr8iP" alt="Company Logo">
+        <img class="logo" src="https://lh5.googleusercontent.com/d/1758AOZ5E3JbnzwrFA4u2kH8nZUPrr8iP" alt="Company Logo">
         <div class="brandText">
           <h1>ระบบขอตรวจสอบกล้อง CCTV</h1>
           <p>ฝ่าย S&LP : Security & Loss Prevention</p>
         </div>
       </div>
-
       <div class="pill"><span class="dot"></span><span id="pillText">พร้อมใช้งาน</span></div>
     </div>
 
@@ -87,22 +84,18 @@
               <div class="formGrid">
                 <div class="field span2">
                   <label>สาเหตุที่ขอตรวจสอบ <span class="danger">*</span></label>
-                  <textarea id="reason" placeholder="ระบุสาเหตุ..." required autocomplete="off"></textarea>
+                  <textarea id="reason" placeholder="ระบุสาเหตุ..." required></textarea>
                 </div>
 
                 <div class="field span2">
                   <label>ผลการตรวจสอบ <span class="danger">*</span></label>
-                  <textarea id="result"
-                            placeholder="ระบุผลการตรวจสอบ (อย่างน้อย 12 ตัวอักษร)"
-                            required minlength="12"
-                            autocomplete="off"></textarea>
-
+                  <textarea id="result" placeholder="ระบุผลการตรวจสอบ (อย่างน้อย 12 ตัวอักษร)" required minlength="12"></textarea>
                   <div id="resultHint" class="hintWarn">ขั้นต่ำ 12 ตัวอักษร (ตอนนี้ 0)</div>
                 </div>
               </div>
             </div>
 
-            <!-- Section Upload Images -->
+            <!-- ✅ Upload Images -->
             <div class="section">
               <div class="sectionTitle">
                 <div class="t">แนบรูปภาพประกอบ</div>
@@ -143,14 +136,13 @@
             </div>
 
             <div id="statusBox" class="status">สถานะ: กำลังโหลดรายการ…</div>
-
           </form>
         </div>
       </div>
     </div>
-
   </div>
 
-  <script src="./app.js" defer></script>
+  <!-- ✅ ชี้ไฟล์ให้ตรง -->
+  <script src="app.js" defer></script>
 </body>
 </html>
