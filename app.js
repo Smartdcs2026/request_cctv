@@ -1,9 +1,15 @@
 // ================================
-// CONFIG: ใส่ API URL ตรงนี้
+// CCTV Request - Frontend (GitHub Pages)
 // ================================
-const API_BASE = "https://rough-paper-094d.somchaibutphon.workers.dev/";
-// ตัวอย่าง (ถ้าใช้ Cloudflare Worker):
-// const API_BASE = "https://your-worker-name.workers.dev";
+
+// ✅ Apps Script Web App URL (ต้องลงท้ายด้วย /exec)
+const SCRIPT_API = "https://script.google.com/macros/s/AKfycbzwB_64GAHsFLpdzQVMoqhdAGr3OX-0fEJku0KoW8bATlFzcIRhGRRBc98CvfjuGFSV/exec";
+
+// ✅ Cloudflare Worker Proxy (แก้ CORS)
+const WORKER_PROXY = "https://rough-paper-094d.somchaibutphon.workers.dev/";
+
+// ✅ ใช้งานจริง: แนะนำให้ใช้ Worker
+const API_BASE = WORKER_PROXY; // หรือเปลี่ยนเป็น SCRIPT_API ถ้าไม่ติด CORS
 
 const $ = (id) => document.getElementById(id);
 
@@ -30,6 +36,9 @@ const resultHint = $('resultHint');
 let isLoadingLists = false;
 let isSaving = false;
 
+// -----------------------------
+// UI helpers
+// -----------------------------
 function setStatus(type, msg){
   statusBox.classList.remove('ok','err','warn');
   if(type === 'ok') statusBox.classList.add('ok');
@@ -37,11 +46,9 @@ function setStatus(type, msg){
   if(type === 'warn') statusBox.classList.add('warn');
   statusBox.textContent = msg;
 }
-
 function setPill(text){
   if(pillText) pillText.textContent = text;
 }
-
 function setFormDisabled(disabled){
   const els = document.querySelectorAll('#cctvForm input, #cctvForm select, #cctvForm textarea, #cctvForm button');
   els.forEach(el => {
@@ -49,9 +56,7 @@ function setFormDisabled(disabled){
     el.disabled = disabled;
   });
 }
-
 function normalizeText(v){ return String(v ?? '').trim(); }
-
 function escapeHtml(s){
   const str = String(s ?? '');
   return str.replace(/[&<>"']/g, (m) => ({
@@ -84,13 +89,11 @@ function getCaseValue(){
   if(selected === '__OTHER__') return normalizeText(caseOtherInput.value);
   return selected;
 }
-
 function getDepartmentValue(){
   const selected = normalizeText(departSelect.value);
   if(selected === '__OTHER__') return normalizeText(departOtherInput.value);
   return selected;
 }
-
 function toggleOther(selectEl, wrapEl, inputEl){
   const v = normalizeText(selectEl.value);
   if(v === '__OTHER__'){
@@ -103,7 +106,6 @@ function toggleOther(selectEl, wrapEl, inputEl){
     inputEl.value = '';
   }
 }
-
 function focusField(id){
   const el = $(id);
   if(el){
@@ -112,6 +114,9 @@ function focusField(id){
   }
 }
 
+// -----------------------------
+// Validate
+// -----------------------------
 function validate(){
   const cse = getCaseValue();
   const name = normalizeText($('requesterName').value);
@@ -131,10 +136,7 @@ function validate(){
   if(!reason) { focusField('reason'); return 'กรุณากรอกสาเหตุที่ขอตรวจสอบ'; }
 
   if(!result) { focusField('result'); return 'กรุณากรอกผลการตรวจสอบ'; }
-  if(result.length < 12) {
-    focusField('result');
-    return `ผลการตรวจสอบต้องมีอย่างน้อย 12 ตัวอักษร (ตอนนี้ ${result.length})`;
-  }
+  if(result.length < 12) { focusField('result'); return `ผลการตรวจสอบต้องมีอย่างน้อย 12 ตัวอักษร (ตอนนี้ ${result.length})`; }
 
   if(!approver) { focusField('approverSelect'); return 'กรุณาเลือกผู้ที่อนุมัติการตรวจ'; }
 
@@ -153,10 +155,16 @@ function updateResultHint(){
 }
 
 // -----------------------------
-// API calls
+// API helpers (GET/POST)
 // -----------------------------
+function buildUrl(base, pathOrQuery){
+  // รองรับ base มี / หรือไม่มี /
+  if(base.endsWith('/')) return base + pathOrQuery.replace(/^\//,'');
+  return base + '/' + pathOrQuery.replace(/^\//,'');
+}
+
 async function apiGet(action){
-  const url = `${API_BASE}?action=${encodeURIComponent(action)}`;
+  const url = buildUrl(API_BASE, `?action=${encodeURIComponent(action)}`);
   const r = await fetch(url, { method:'GET' });
   const j = await r.json();
   if(!j.ok) throw new Error(j.message || 'โหลดข้อมูลไม่สำเร็จ');
@@ -164,7 +172,8 @@ async function apiGet(action){
 }
 
 async function apiPostSave(payload){
-  const r = await fetch(API_BASE, {
+  const url = buildUrl(API_BASE, '');
+  const r = await fetch(url, {
     method:'POST',
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify(payload)
@@ -183,7 +192,6 @@ function startLoading(){
   setFormDisabled(true);
   setStatus('warn', 'สถานะ: กำลังโหลดรายการ…');
 }
-
 function finishLoading(ok){
   isLoadingLists = false;
   setFormDisabled(false);
@@ -199,11 +207,6 @@ function finishLoading(ok){
 
 async function loadDropdowns(){
   if(isLoadingLists) return;
-  if(!API_BASE || API_BASE.includes('PUT_YOUR_API_BASE_URL_HERE')){
-    finishLoading(false);
-    setStatus('err', 'สถานะ: ยังไม่ได้ตั้งค่า API_BASE ใน assets/app.js');
-    return;
-  }
 
   startLoading();
   try{
@@ -260,7 +263,6 @@ function showSavedAlertCenter(data){
     <div class="swal-note"><b>สาเหตุ</b><br>${escapeHtml(data.reason || '-')}</div>
     <div class="swal-note"><b>ผลการตรวจสอบ</b><br>${escapeHtml(data.result || '-')}</div>
   `;
-
   return Swal.fire({
     icon: undefined,
     iconHtml: '',
@@ -299,9 +301,7 @@ function clearAfterSave(){
   setTimeout(()=> $('requesterName').focus(), 0);
 }
 
-function resetForm(){
-  clearAfterSave();
-}
+function resetForm(){ clearAfterSave(); }
 
 // -----------------------------
 // Submit save
@@ -338,18 +338,10 @@ async function submitForm(){
     const res = await apiPostSave(payload);
 
     if(res && res.ok){
-      const showData = {
-        timestamp: res.timestamp,
-        ...payload
-      };
-
       setStatus('ok', `บันทึกสำเร็จ\nเวลา: ${res.timestamp}`);
 
-      try{
-        await showSavedAlertCenter(showData);
-      }catch(e){
-        console.warn('SweetAlert error:', e);
-      }
+      try{ await showSavedAlertCenter({ ...payload, timestamp: res.timestamp }); }
+      catch(e){ console.warn('SweetAlert error:', e); }
 
       clearAfterSave();
     }else{
