@@ -165,8 +165,13 @@ function buildUrl(base, pathOrQuery){
 
 async function apiGet(action){
   const url = buildUrl(API_BASE, `?action=${encodeURIComponent(action)}`);
-  const r = await fetch(url, { method:'GET' });
-  const j = await r.json();
+  const r = await fetch(url, { method:'GET', redirect:'follow' });
+
+  const text = await r.text();
+  let j;
+  try{ j = JSON.parse(text); }
+  catch(e){ throw new Error("API ไม่ได้ส่ง JSON: " + text.slice(0,120)); }
+
   if(!j.ok) throw new Error(j.message || 'โหลดข้อมูลไม่สำเร็จ');
   return j.data || [];
 }
@@ -386,3 +391,4 @@ approverSelect.innerHTML = '<option value="">กำลังโหลดผู�
 
 updateResultHint();
 loadDropdowns();
+
