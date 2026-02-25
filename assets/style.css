@@ -362,3 +362,144 @@ input:focus, select:focus, textarea:focus{
 }
 .swal-noicon-popup .swal2-icon{ display:none !important; }
 .swal-noicon-popup{ padding-top: 16px !important; }
+}
+
+/* =========================
+   Upload Images UI
+   ========================= */
+.uploadWrap{ display:flex; flex-direction:column; gap:12px; }
+
+.uploadTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.uploadNote{
+  font-size:13px;
+  color: var(--muted);
+  font-weight:800;
+}
+
+.btnAdd{
+  min-width:auto !important;
+  padding:10px 12px !important;
+  border-radius: 12px;
+}
+
+.uploadSlots{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+@media (max-width:560px){
+  .uploadSlots{ grid-template-columns: 1fr; }
+}
+
+.slot{
+  border:2px dashed var(--lineStrong);
+  border-radius: 14px;
+  padding: 12px;
+  background:#f8fafc;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.slotLeft{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+
+.slotTitle{
+  font-weight:900;
+  color:#0f172a;
+  font-size:13.5px;
+}
+
+.slotSub{
+  color: var(--muted);
+  font-weight:800;
+  font-size:12.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.slot input[type="file"]{
+  width:auto;
+  border:none;
+  padding:0;
+  border-radius:0;
+  background:transparent;
+}
+
+.previewGrid{
+  display:grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap:10px;
+}
+
+@media (max-width:900px){
+  .previewGrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width:560px){
+  .previewGrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.previewItem{
+  border:2px solid var(--lineStrong);
+  border-radius: 14px;
+  overflow:hidden;
+  background:#fff;
+  position:relative;
+}
+
+.previewItem img{
+  width:100%;
+  height:110px;
+  object-fit:cover;
+  display:block;
+}
+
+.previewMeta{
+  padding:8px 10px;
+  font-size:12px;
+  font-weight:900;
+  color:#0f172a;
+  border-top:2px solid var(--line);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.btnRemove{
+  position:absolute;
+  top:8px;
+  right:8px;
+  border:none;
+  cursor:pointer;
+  border-radius: 999px;
+  width:30px;
+  height:30px;
+  font-weight:900;
+  background: rgba(220,38,38,.92);
+  color:#fff;
+  box-shadow: 0 8px 16px rgba(220,38,38,.18);
+}
+
+.hintError{
+  border:2px solid rgba(220,38,38,.45);
+  background: rgba(220,38,38,.10);
+  color:#7f1d1d;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight:900;
+  font-size:13px;
+}
