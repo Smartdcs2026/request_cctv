@@ -101,7 +101,26 @@
                 </div>
               </div>
             </div>
+         <!-- Section Upload Images -->
+<div class="section">
+  <div class="sectionTitle">
+    <div class="t">แนบรูปภาพประกอบ</div>
+    <div class="req"><span class="danger">*</span> อย่างน้อย 1 รูป (สูงสุด 6)</div>
+  </div>
 
+  <div class="uploadWrap">
+    <div class="uploadTop">
+      <div class="uploadNote">เริ่มต้นมี 2 ช่องอัปโหลด และกด (+) เพื่อเพิ่มได้จนถึง 6 รูป</div>
+      <button id="btnAddImage" class="btn btnGhost btnAdd" type="button">+ เพิ่มรูป</button>
+    </div>
+
+    <div id="uploadSlots" class="uploadSlots"></div>
+
+    <div id="uploadError" class="hintError hidden">กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป</div>
+
+    <div id="previewGrid" class="previewGrid"></div>
+  </div>
+</div>
             <!-- Section 3 -->
             <div class="section">
               <div class="sectionTitle">
@@ -136,3 +155,4 @@
 </body>
 
 </html>
+
