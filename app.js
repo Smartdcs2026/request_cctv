@@ -5,37 +5,61 @@ const API_BASE = "https://rough-paper-094d.somchaibutphon.workers.dev";
 
 const $ = (id) => document.getElementById(id);
 
-const caseSelect = $('caseSelect');
-const caseOtherWrap = $('caseOtherWrap');
-const caseOtherInput = $('caseOther');
+// --- DOM refs (จะ resolve ตอน DOMContentLoaded อีกที) ---
+let caseSelect, caseOtherWrap, caseOtherInput;
+let departSelect, departOtherWrap, departOtherInput;
+let approverSelect;
 
-const departSelect = $('departmentSelect');
-const departOtherWrap = $('departmentOtherWrap');
-const departOtherInput = $('departmentOther');
+let btnSave, btnReset, btnReload;
+let statusBox, pillText;
+let resultEl, resultHint;
 
-const approverSelect = $('approverSelect');
+// Upload
+let uploadSlotsEl, previewGridEl, btnAddImage, uploadErrorEl;
 
-const btnSave = $('btnSave');
-const btnReset = $('btnReset');
-const btnReload = $('btnReload');
+let isLoadingLists = false;
+let isSaving = false;
 
-const statusBox = $('statusBox');
-const pillText = $('pillText');
-
-const resultEl = $('result');
-const resultHint = $('resultHint');
-
-// ================================
-// IMAGE UPLOAD (2 slots + add up to 6)
-// ================================
-const uploadSlotsEl = $('uploadSlots');
-const previewGridEl = $('previewGrid');
-const btnAddImage = $('btnAddImage');
-const uploadErrorEl = $('uploadError');
-
-let imageIds = [];          // เก็บ fileId ที่อัปแล้ว
+// Upload state
+let imageIds = [];
 let slotCount = 0;
 const MAX_IMAGES = 6;
+
+// ================================
+// UI helpers
+// ================================
+function setStatus(type, msg){
+  if(!statusBox) return;
+  statusBox.classList.remove('ok','err','warn');
+  if(type === 'ok') statusBox.classList.add('ok');
+  if(type === 'err') statusBox.classList.add('err');
+  if(type === 'warn') statusBox.classList.add('warn');
+  statusBox.textContent = msg;
+}
+
+function setPill(text){
+  if(pillText) pillText.textContent = text;
+}
+
+function setFormDisabled(disabled){
+  const els = document.querySelectorAll('#cctvForm input, #cctvForm select, #cctvForm textarea, #cctvForm button');
+  els.forEach(el => {
+    if(el.id === 'btnReload') return;
+    el.disabled = disabled;
+  });
+}
+
+function normalizeText(v){
+  return String(v ?? '').trim();
+}
+
+function focusField(id){
+  const el = $(id);
+  if(el){
+    el.focus();
+    if(el.select) el.select();
+  }
+}
 
 function setUploadError(show, msg){
   if(!uploadErrorEl) return;
@@ -47,15 +71,104 @@ function setUploadError(show, msg){
   }
 }
 
+// ================================
+// API helpers
+// ================================
+function buildUrl(base, qs){
+  const b = String(base || '').replace(/\/+$/, '');
+  return b + qs;
+}
+
+async function apiGet(action){
+  const url = buildUrl(API_BASE, `/?action=${encodeURIComponent(action)}`);
+  const r = await fetch(url, { method:'GET', cache:'no-store', redirect:'follow' });
+
+  const text = await r.text();
+  let j;
+  try{ j = JSON.parse(text); }
+  catch(e){ throw new Error('API ไม่ได้ส่ง JSON: ' + text.slice(0,120)); }
+
+  if(!j.ok) throw new Error(j.message || 'โหลดข้อมูลไม่สำเร็จ');
+  return j.data || [];
+}
+
+async function apiPost(action, payload){
+  const url = buildUrl(API_BASE, `/?action=${encodeURIComponent(action)}`);
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await r.text();
+  let j;
+  try{ j = JSON.parse(text); }
+  catch(e){ throw new Error('API ไม่ได้ส่ง JSON: ' + text.slice(0,120)); }
+
+  if(!j.ok) throw new Error(j.message || 'ทำรายการไม่สำเร็จ');
+  return j;
+}
+
+// ================================
+// Dropdown helpers
+// ================================
+function fillSelect(selectEl, items, placeholder){
+  selectEl.innerHTML = '';
+  const opt0 = document.createElement('option');
+  opt0.value = '';
+  opt0.textContent = placeholder;
+  selectEl.appendChild(opt0);
+
+  (items || []).forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    selectEl.appendChild(opt);
+  });
+
+  const other = document.createElement('option');
+  other.value = '__OTHER__';
+  other.textContent = 'อื่นๆ (กรอกเอง)';
+  selectEl.appendChild(other);
+}
+
+function toggleOther(selectEl, wrapEl, inputEl){
+  const v = normalizeText(selectEl.value);
+  if(v === '__OTHER__'){
+    wrapEl.classList.remove('hidden');
+    inputEl.required = true;
+    setTimeout(()=> inputEl.focus(), 0);
+  }else{
+    wrapEl.classList.add('hidden');
+    inputEl.required = false;
+    inputEl.value = '';
+  }
+}
+
+function getCaseValue(){
+  const selected = normalizeText(caseSelect.value);
+  if(selected === '__OTHER__') return normalizeText(caseOtherInput.value);
+  return selected;
+}
+
+function getDepartmentValue(){
+  const selected = normalizeText(departSelect.value);
+  if(selected === '__OTHER__') return normalizeText(departOtherInput.value);
+  return selected;
+}
+
+// ================================
+// Upload: compress + UI
+// ================================
 function guessExt(mime){
   if(mime === 'image/png') return 'png';
   if(mime === 'image/webp') return 'webp';
   return 'jpg';
 }
 
-// ✅ compress รูปด้วย canvas ลดขนาด/น้ำหนัก (เสถียรกว่า)
 async function compressImage(file, maxW = 1280, quality = 0.82){
   const mimeIn = file.type || 'image/jpeg';
+
   const img = await new Promise((resolve, reject)=>{
     const url = URL.createObjectURL(file);
     const i = new Image();
@@ -77,7 +190,6 @@ async function compressImage(file, maxW = 1280, quality = 0.82){
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, outW, outH);
 
-  // บังคับออกเป็น jpeg จะคุมขนาดง่าย
   const dataUrl = canvas.toDataURL('image/jpeg', quality);
   const base64 = dataUrl.split(',')[1];
 
@@ -88,49 +200,6 @@ async function compressImage(file, maxW = 1280, quality = 0.82){
   };
 }
 
-// --- API helpers ---
-function buildUrl(base, qs){
-  const b = String(base || '').replace(/\/+$/, '');
-  return b + qs;
-}
-
-async function apiPost(action, payload){
-  const url = buildUrl(API_BASE, `/?action=${encodeURIComponent(action)}`);
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await r.text();
-  let j;
-  try{ j = JSON.parse(text); }
-  catch(e){ throw new Error('API ไม่ได้ส่ง JSON: ' + text.slice(0,120)); }
-
-  if(!j.ok) throw new Error(j.message || 'ทำรายการไม่สำเร็จ');
-  return j;
-}
-
-async function apiGet(action){
-  const url = buildUrl(API_BASE, `/?action=${encodeURIComponent(action)}`);
-  const r = await fetch(url, {
-    method: 'GET',
-    cache: 'no-store',
-    redirect: 'follow'
-  });
-
-  const text = await r.text();
-  let j;
-  try{ j = JSON.parse(text); }
-  catch(e){ throw new Error('API ไม่ได้ส่ง JSON: ' + text.slice(0,120)); }
-
-  if(!j.ok) throw new Error(j.message || 'โหลดข้อมูลไม่สำเร็จ');
-  return j.data || [];
-}
-
-// ================================
-// Preview UI
-// ================================
 function renderPreview(){
   if(!previewGridEl) return;
 
@@ -147,7 +216,6 @@ function renderPreview(){
     previewGridEl.appendChild(div);
   });
 
-  // remove
   previewGridEl.querySelectorAll('.btnRemove').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const i = parseInt(btn.getAttribute('data-idx'), 10);
@@ -159,8 +227,6 @@ function renderPreview(){
 }
 
 function makeSlot(title){
-  if(!uploadSlotsEl) return;
-
   slotCount++;
   const slotIndex = slotCount;
 
@@ -202,8 +268,8 @@ function makeSlot(title){
 
       imageIds.push(newId);
       renderPreview();
-      sub.textContent = `อัปโหลดแล้ว ✓ ${file.name}`;
 
+      sub.textContent = `อัปโหลดแล้ว ✓ ${file.name}`;
       setStatus('', 'สถานะ: พร้อมกรอกข้อมูล');
     }catch(err){
       console.error(err);
@@ -219,18 +285,21 @@ function makeSlot(title){
 }
 
 function initUploadUI(){
-  if(!uploadSlotsEl || !previewGridEl || !btnAddImage) return;
+  // ✅ ถ้า element ไม่ครบ ให้แจ้งชัดเจน (ไม่ return เงียบๆ)
+  if(!uploadSlotsEl || !previewGridEl || !btnAddImage || !uploadErrorEl){
+    setStatus('err', 'ไม่พบส่วนอัปโหลดรูป (ตรวจสอบ id: uploadSlots, previewGrid, btnAddImage, uploadError)');
+    return;
+  }
 
   uploadSlotsEl.innerHTML = '';
   previewGridEl.innerHTML = '';
   imageIds = [];
   slotCount = 0;
 
-  // ✅ 2 ช่องเริ่มต้น
   makeSlot('รูปภาพ #1 (จำเป็นอย่างน้อย 1)');
   makeSlot('รูปภาพ #2');
 
-  // ✅ กัน addEventListener ซ้ำ
+  // ✅ กัน handler ซ้ำ
   btnAddImage.onclick = () => {
     if(slotCount >= MAX_IMAGES){
       Swal.fire({ icon:'warning', title:'เพิ่มไม่ได้แล้ว', text:`เพิ่มได้สูงสุด ${MAX_IMAGES} ช่อง` });
@@ -243,86 +312,7 @@ function initUploadUI(){
 }
 
 // ================================
-// Form state + UI helpers
-// ================================
-let isLoadingLists = false;
-let isSaving = false;
-
-function setStatus(type, msg){
-  if(!statusBox) return;
-  statusBox.classList.remove('ok','err','warn');
-  if(type === 'ok') statusBox.classList.add('ok');
-  if(type === 'err') statusBox.classList.add('err');
-  if(type === 'warn') statusBox.classList.add('warn');
-  statusBox.textContent = msg;
-}
-function setPill(text){ if(pillText) pillText.textContent = text; }
-
-function setFormDisabled(disabled){
-  const els = document.querySelectorAll('#cctvForm input, #cctvForm select, #cctvForm textarea, #cctvForm button');
-  els.forEach(el => {
-    if(el.id === 'btnReload') return;
-    el.disabled = disabled;
-  });
-}
-
-function normalizeText(v){ return String(v ?? '').trim(); }
-
-function fillSelect(selectEl, items, placeholder){
-  selectEl.innerHTML = '';
-  const opt0 = document.createElement('option');
-  opt0.value = '';
-  opt0.textContent = placeholder;
-  selectEl.appendChild(opt0);
-
-  (items || []).forEach(t=>{
-    const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t;
-    selectEl.appendChild(opt);
-  });
-
-  const other = document.createElement('option');
-  other.value = '__OTHER__';
-  other.textContent = 'อื่นๆ (กรอกเอง)';
-  selectEl.appendChild(other);
-}
-
-function toggleOther(selectEl, wrapEl, inputEl){
-  const v = normalizeText(selectEl.value);
-  if(v === '__OTHER__'){
-    wrapEl.classList.remove('hidden');
-    inputEl.required = true;
-    setTimeout(()=> inputEl.focus(), 0);
-  }else{
-    wrapEl.classList.add('hidden');
-    inputEl.required = false;
-    inputEl.value = '';
-  }
-}
-
-function focusField(id){
-  const el = $(id);
-  if(el){
-    el.focus();
-    if(el.select) el.select();
-  }
-}
-
-function getCaseValue(){
-  const selected = normalizeText(caseSelect.value);
-  if(selected === '__OTHER__') return normalizeText(caseOtherInput.value);
-  return selected;
-}
-
-function getDepartmentValue(){
-  const selected = normalizeText(departSelect.value);
-  if(selected === '__OTHER__') return normalizeText(departOtherInput.value);
-  return selected;
-}
-
-// ================================
-// Validation
+// Validation + Result hint
 // ================================
 function validate(){
   const cse = getCaseValue();
@@ -350,7 +340,6 @@ function validate(){
 
   if(!approver) { focusField('approverSelect'); return 'กรุณาเลือกผู้ที่อนุมัติการตรวจ'; }
 
-  // ✅ ต้องมีอย่างน้อย 1 รูป
   if(imageIds.length < 1){
     setUploadError(true, 'กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป');
     return 'กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป';
@@ -359,8 +348,17 @@ function validate(){
   return '';
 }
 
+function updateResultHint(){
+  const len = normalizeText(resultEl.value).length;
+  if(resultHint){
+    resultHint.textContent = `ขั้นต่ำ 12 ตัวอักษร (ตอนนี้ ${len})`;
+    // ไม่พึ่ง class ก็ได้ กัน CSS ไม่มี
+    resultHint.style.color = (len >= 12) ? '#16a34a' : '#b45309';
+  }
+}
+
 // ================================
-// Loading dropdowns
+// Load dropdowns
 // ================================
 function startLoading(){
   isLoadingLists = true;
@@ -414,7 +412,6 @@ async function loadDropdowns(){
       approverSelect.appendChild(opt);
     });
 
-    // reset “อื่นๆ”
     caseOtherWrap.classList.add('hidden');
     caseOtherInput.required = false;
     caseOtherInput.value = '';
@@ -431,20 +428,9 @@ async function loadDropdowns(){
   }
 }
 
-function reloadLists(){ loadDropdowns(); }
-
-// ================================
-// Result hint counter
-// ================================
-function updateResultHint(){
-  const len = normalizeText(resultEl.value).length;
-  if(resultHint){
-    resultHint.textContent = `ขั้นต่ำ 12 ตัวอักษร (ตอนนี้ ${len})`;
-    resultHint.classList.toggle('hintOk', len >= 12);
-    resultHint.classList.toggle('hintWarn', len < 12);
-  }
+function reloadLists(){
+  loadDropdowns();
 }
-if(resultEl) resultEl.addEventListener('input', updateResultHint);
 
 // ================================
 // Save / Reset
@@ -469,8 +455,6 @@ function clearAfterSave(){
   setPill('พร้อมใช้งาน');
 
   updateResultHint();
-
-  // ✅ reset upload UI กลับเป็น 2 ช่อง
   initUploadUI();
 
   setTimeout(()=> $('requesterName')?.focus(), 0);
@@ -495,7 +479,7 @@ async function submitForm(){
     reason: normalizeText($('reason').value),
     result: normalizeText($('result').value),
     approver: normalizeText(approverSelect.value),
-    imageIds: imageIds.join('|') // ✅ บันทึกเป็น ID คั่นด้วย |
+    imageIds: imageIds.join('|') // ✅ "id1|id2|id3"
   };
 
   isSaving = true;
@@ -509,30 +493,27 @@ async function submitForm(){
 
     setStatus('ok', `บันทึกสำเร็จ\nเวลา: ${res.timestamp || '-'}`);
 
-    // popup สรุป
-    try{
-      await Swal.fire({
-        title: 'บันทึกสำเร็จ',
-        icon: 'success',
-        confirmButtonText: 'ตกลง',
-        confirmButtonColor: '#2563eb',
-        html: `
-          <div style="text-align:left;font-weight:800">
-            <div><b>วันที่เวลา:</b> ${res.timestamp || '-'}</div>
-            <div><b>หัวข้อหลัก:</b> ${payload.caseTitle || '-'}</div>
-            <div><b>ชื่อผู้ขอตรวจ:</b> ${payload.requesterName || '-'}</div>
-            <div><b>แผนก:</b> ${payload.department || '-'}</div>
-            <div><b>ผู้อนุมัติ:</b> ${payload.approver || '-'}</div>
-            <div style="margin-top:8px"><b>จำนวนรูป:</b> ${imageIds.length}</div>
-          </div>
-        `
-      });
-    }catch(e){ /* ignore */ }
+    await Swal.fire({
+      icon: 'success',
+      title: 'บันทึกสำเร็จ',
+      confirmButtonText: 'ตกลง',
+      confirmButtonColor: '#2563eb',
+      html: `
+        <div style="text-align:left;font-weight:800">
+          <div><b>วันที่เวลา:</b> ${res.timestamp || '-'}</div>
+          <div><b>หัวข้อหลัก:</b> ${payload.caseTitle || '-'}</div>
+          <div><b>ชื่อผู้ขอตรวจ:</b> ${payload.requesterName || '-'}</div>
+          <div><b>แผนก:</b> ${payload.department || '-'}</div>
+          <div><b>ผู้อนุมัติ:</b> ${payload.approver || '-'}</div>
+          <div style="margin-top:8px"><b>จำนวนรูป:</b> ${imageIds.length}</div>
+        </div>
+      `
+    });
 
     clearAfterSave();
   }catch(err){
     console.error(err);
-    setStatus('err', (err?.message || String(err) || 'บันทึกไม่สำเร็จ'));
+    setStatus('err', err?.message || String(err) || 'บันทึกไม่สำเร็จ');
   }finally{
     isSaving = false;
     btnSave.disabled = false;
@@ -546,29 +527,63 @@ function resetForm(){
 }
 
 // ================================
-// Events + init
+// Boot (สำคัญมาก) — ทำให้ช่องอัปโหลดโผล่แน่นอน
 // ================================
-caseSelect.addEventListener('change', ()=> toggleOther(caseSelect, caseOtherWrap, caseOtherInput));
-departSelect.addEventListener('change', ()=> toggleOther(departSelect, departOtherWrap, departOtherInput));
-btnReload.addEventListener('click', reloadLists);
+document.addEventListener('DOMContentLoaded', () => {
+  // Resolve DOM refs
+  caseSelect = $('caseSelect');
+  caseOtherWrap = $('caseOtherWrap');
+  caseOtherInput = $('caseOther');
 
-if(btnSave) btnSave.addEventListener('click', submitForm);
-if(btnReset) btnReset.addEventListener('click', resetForm);
+  departSelect = $('departmentSelect');
+  departOtherWrap = $('departmentOtherWrap');
+  departOtherInput = $('departmentOther');
 
-// กันกด Enter แล้ว submit ใน input (ยกเว้น textarea)
-document.addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter'){
-    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-    if(tag === 'textarea') return;
-    e.preventDefault();
-  }
+  approverSelect = $('approverSelect');
+
+  btnSave = $('btnSave');
+  btnReset = $('btnReset');
+  btnReload = $('btnReload');
+
+  statusBox = $('statusBox');
+  pillText = $('pillText');
+
+  resultEl = $('result');
+  resultHint = $('resultHint');
+
+  uploadSlotsEl = $('uploadSlots');
+  previewGridEl = $('previewGrid');
+  btnAddImage = $('btnAddImage');
+  uploadErrorEl = $('uploadError');
+
+  // Bind events
+  caseSelect?.addEventListener('change', ()=> toggleOther(caseSelect, caseOtherWrap, caseOtherInput));
+  departSelect?.addEventListener('change', ()=> toggleOther(departSelect, departOtherWrap, departOtherInput));
+  btnReload?.addEventListener('click', reloadLists);
+
+  btnSave?.addEventListener('click', submitForm);
+  btnReset?.addEventListener('click', resetForm);
+
+  resultEl?.addEventListener('input', updateResultHint);
+  updateResultHint();
+
+  // กัน Enter ส่งฟอร์ม
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      if(tag === 'textarea') return;
+      e.preventDefault();
+    }
+  });
+
+  // Init placeholders
+  if(caseSelect) fillSelect(caseSelect, [], 'กำลังโหลดหัวข้อ…');
+  if(departSelect) fillSelect(departSelect, [], 'กำลังโหลดแผนก…');
+  if(approverSelect) approverSelect.innerHTML = '<option value="">กำลังโหลดผู้อนุมัติ…</option>';
+
+  // ✅ สร้างช่องอัปโหลดทันที
+  initUploadUI();
+
+  // Load dropdowns
+  loadDropdowns();
 });
-
-// init placeholders + load
-fillSelect(caseSelect, [], 'กำลังโหลดหัวข้อ…');
-fillSelect(departSelect, [], 'กำลังโหลดแผนก…');
-approverSelect.innerHTML = '<option value="">กำลังโหลดผู้อนุมัติ…</option>';
-
-updateResultHint();
-loadDropdowns();
-initUploadUI();
