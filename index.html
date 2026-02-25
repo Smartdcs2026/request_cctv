@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ระบบขอตรวจสอบกล้อง CCTV - S&LP</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="topbar">
+      <div class="brand">
+        <img class="logo" src="https://lh5.googleusercontent.com/d/1758AOZ5E3JbnzwrFA4u2kH8nZUPrr8iP" alt="Company Logo">
+        <div class="brandText">
+          <h1>ระบบขอตรวจสอบกล้อง CCTV</h1>
+          <p>ฝ่าย S&LP : Security & Loss Prevention</p>
+        </div>
+      </div>
+
+      <div class="pill"><span class="dot"></span><span id="pillText">พร้อมใช้งาน</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="cardHeader">
+          <div>
+            <h2>บันทึกคำขอตรวจสอบ</h2>
+            <div class="sub">กรอกข้อมูลให้ครบ จากนั้นกด “บันทึกข้อมูล”</div>
+          </div>
+        </div>
+
+        <div class="cardBody">
+          <form id="cctvForm" onsubmit="return false;">
+
+            <!-- Section 1 -->
+            <div class="section">
+              <div class="sectionTitle">
+                <div class="t">ข้อมูลคำขอ</div>
+                <div class="req"><span class="danger">*</span> จำเป็น</div>
+              </div>
+
+              <div class="formGrid">
+                <div class="field span2">
+                  <label>หัวข้อหลักการขอตรวจสอบ <span class="danger">*</span></label>
+                  <select id="caseSelect" required></select>
+                </div>
+
+                <div class="field span2 hidden" id="caseOtherWrap">
+                  <label>กรอกหัวข้อหลัก (อื่นๆ) <span class="danger">*</span></label>
+                  <input id="caseOther" type="text" placeholder="ระบุหัวข้อหลัก..." autocomplete="off">
+                </div>
+
+                <div class="field span2">
+                  <label>ชื่อผู้ขอตรวจสอบ <span class="danger">*</span></label>
+                  <input id="requesterName" type="text" placeholder="ชื่อ-นามสกุล" autocomplete="off" required>
+                </div>
+
+                <div class="field">
+                  <label>แผนก <span class="danger">*</span></label>
+                  <select id="departmentSelect" required></select>
+                </div>
+
+                <div class="field hidden" id="departmentOtherWrap">
+                  <label>กรอกชื่อแผนก (อื่นๆ) <span class="danger">*</span></label>
+                  <input id="departmentOther" type="text" placeholder="ระบุชื่อแผนก..." autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2 -->
+            <div class="section">
+              <div class="sectionTitle">
+                <div class="t">รายละเอียดการตรวจสอบ</div>
+                <div class="req"></div>
+              </div>
+
+              <div class="formGrid">
+                <div class="field span2">
+                  <label>สาเหตุที่ขอตรวจสอบ <span class="danger">*</span></label>
+                  <textarea id="reason" placeholder="ระบุสาเหตุ..." required></textarea>
+                </div>
+
+                <div class="field span2">
+                  <label>ผลการตรวจสอบ <span class="danger">*</span></label>
+                  <textarea id="result"
+                            placeholder="ระบุผลการตรวจสอบ (อย่างน้อย 12 ตัวอักษร)"
+                            required
+                            minlength="12"></textarea>
+
+                  <div id="resultHint" class="hintWarn">ขั้นต่ำ 12 ตัวอักษร (ตอนนี้ 0)</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3 -->
+            <div class="section">
+              <div class="sectionTitle">
+                <div class="t">ผู้อนุมัติ</div>
+                <div class="req"></div>
+              </div>
+
+              <div class="formGrid">
+                <div class="field span2">
+                  <label>ผู้ที่อนุมัติการตรวจ <span class="danger">*</span></label>
+                  <select id="approverSelect" required></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="btnSave" class="btn btnPrimary" type="button">บันทึกข้อมูล</button>
+              <button id="btnReset" class="btn btnGhost" type="button">ล้างฟอร์ม</button>
+              <button id="btnReload" class="btn btnDanger" type="button" title="โหลดรายการใหม่" style="display:none;">โหลดรายการใหม่</button>
+            </div>
+
+            <div id="statusBox" class="status">สถานะ: กำลังโหลดรายการ…</div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
