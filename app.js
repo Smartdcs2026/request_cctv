@@ -160,6 +160,10 @@ function getDepartmentValue(){
 // ================================
 // Upload: compress + UI
 // ================================
+// ================================
+// Upload: compress + UI (Improved)
+// ================================
+
 function guessExt(mime){
   if(mime === 'image/png') return 'png';
   if(mime === 'image/webp') return 'webp';
@@ -211,18 +215,18 @@ function renderPreview(){
     div.innerHTML = `
       <button class="btnRemove" type="button" title="ลบรูป" data-idx="${idx}">×</button>
       <img src="${url}" alt="preview">
-      <div class="previewMeta">รูปที่ ${idx+1} • ${id}</div>
+      <div class="previewMeta">รูปที่ ${idx+1}</div>
     `;
     previewGridEl.appendChild(div);
   });
 
   previewGridEl.querySelectorAll('.btnRemove').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+    btn.onclick = ()=>{
       const i = parseInt(btn.getAttribute('data-idx'), 10);
       imageIds.splice(i, 1);
       renderPreview();
-      setUploadError(imageIds.length < 1, 'กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป');
-    });
+      setUploadError(imageIds.length < 1);
+    };
   });
 }
 
@@ -247,9 +251,26 @@ function makeSlot(title){
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
 
+    // ✅ ต้องกรอกชื่อก่อน upload
+    const requester = normalizeText($('requesterName')?.value);
+    if(!requester){
+      Swal.fire({
+        icon:'warning',
+        title:'กรอกชื่อก่อนอัปโหลด',
+        text:'กรุณากรอกชื่อผู้ขอตรวจสอบก่อนแนบรูป'
+      });
+      fileInput.value = '';
+      focusField('requesterName');
+      return;
+    }
+
     if(imageIds.length >= MAX_IMAGES){
       fileInput.value = '';
-      Swal.fire({ icon:'warning', title:'เกินจำนวนที่กำหนด', text:`อัปโหลดได้สูงสุด ${MAX_IMAGES} รูป` });
+      Swal.fire({
+        icon:'warning',
+        title:'เกินจำนวนที่กำหนด',
+        text:`อัปโหลดได้สูงสุด ${MAX_IMAGES} รูป`
+      });
       return;
     }
 
@@ -261,9 +282,14 @@ function makeSlot(title){
       setStatus('', 'สถานะ: กำลังอัปโหลดรูปภาพ…');
 
       const packed = await compressImage(file);
-      const up = await apiPost('upload', { files:[packed] });
-      const newId = (up.ids && up.ids[0]) ? up.ids[0] : '';
 
+      // ✅ ส่ง requesterName ไป backend เพื่อสร้างโฟลเดอร์ย่อย
+      const up = await apiPost('upload', { 
+        files:[packed],
+        requesterName: requester
+      });
+
+      const newId = (up.ids && up.ids[0]) ? up.ids[0] : '';
       if(!newId) throw new Error('อัปโหลดสำเร็จแต่ไม่ได้รับ ID กลับมา');
 
       imageIds.push(newId);
@@ -271,12 +297,18 @@ function makeSlot(title){
 
       sub.textContent = `อัปโหลดแล้ว ✓ ${file.name}`;
       setStatus('', 'สถานะ: พร้อมกรอกข้อมูล');
-    }catch(err){
+    }
+    catch(err){
       console.error(err);
       sub.textContent = 'อัปโหลดไม่สำเร็จ';
-      Swal.fire({ icon:'error', title:'อัปโหลดไม่สำเร็จ', text: err?.message || String(err) });
-      setStatus('err', 'อัปโหลดรูปภาพไม่สำเร็จ: ' + (err?.message || err));
-    }finally{
+      Swal.fire({
+        icon:'error',
+        title:'อัปโหลดไม่สำเร็จ',
+        text: err?.message || String(err)
+      });
+      setStatus('err', 'อัปโหลดรูปภาพไม่สำเร็จ');
+    }
+    finally{
       setFormDisabled(false);
     }
   });
@@ -285,9 +317,8 @@ function makeSlot(title){
 }
 
 function initUploadUI(){
-  // ✅ ถ้า element ไม่ครบ ให้แจ้งชัดเจน (ไม่ return เงียบๆ)
   if(!uploadSlotsEl || !previewGridEl || !btnAddImage || !uploadErrorEl){
-    setStatus('err', 'ไม่พบส่วนอัปโหลดรูป (ตรวจสอบ id: uploadSlots, previewGrid, btnAddImage, uploadError)');
+    setStatus('err', 'ไม่พบ element อัปโหลดรูปในหน้า HTML');
     return;
   }
 
@@ -299,16 +330,19 @@ function initUploadUI(){
   makeSlot('รูปภาพ #1 (จำเป็นอย่างน้อย 1)');
   makeSlot('รูปภาพ #2');
 
-  // ✅ กัน handler ซ้ำ
   btnAddImage.onclick = () => {
     if(slotCount >= MAX_IMAGES){
-      Swal.fire({ icon:'warning', title:'เพิ่มไม่ได้แล้ว', text:`เพิ่มได้สูงสุด ${MAX_IMAGES} ช่อง` });
+      Swal.fire({
+        icon:'warning',
+        title:'เพิ่มไม่ได้แล้ว',
+        text:`เพิ่มได้สูงสุด ${MAX_IMAGES} ช่อง`
+      });
       return;
     }
     makeSlot(`รูปภาพ #${slotCount + 1}`);
   };
 
-  setUploadError(true, 'กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป');
+  setUploadError(true);
 }
 
 // ================================
@@ -587,3 +621,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load dropdowns
   loadDropdowns();
 });
+
