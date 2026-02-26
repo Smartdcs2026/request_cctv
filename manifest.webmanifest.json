@@ -1,9 +1,9 @@
 {
-  "name": "ระบบขอตรวจสอบกล้อง CCTV - S&LP",
-  "short_name": "CCTV Request",
-  "start_url": "./",
+  "name": "ระบบขอตรวจสอบกล้อง CCTV",
+  "short_name": "CCTV",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#f4f6fb",
+  "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "icons": [
     {
